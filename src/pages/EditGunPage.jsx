@@ -20,6 +20,7 @@ import {
   formatDraftTime,
 } from '../utils/draftStorage'
 import ConfirmModal from '../components/modals/ConfirmModal'
+import { toDisplayMessage } from '../utils/helpers'
 
 /**
  * EditGunPage — Edit an existing weapon / hardware item.
@@ -112,7 +113,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
           setError('Hardware record could not be loaded.')
         }
       } catch (err) {
-        setError(err.message || 'Failed to load hardware record from server.')
+        setError(toDisplayMessage(err, 'Failed to load hardware record from server.'))
       } finally {
         setLoading(false)
       }
@@ -296,7 +297,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
         throw new Error(res.message || 'Failed to update record on server.')
       }
     } catch (err) {
-      setError(err.message || 'Error occurred while updating record.')
+      setError(toDisplayMessage(err, 'Error occurred while updating record.'))
     } finally {
       setUpdating(false)
     }

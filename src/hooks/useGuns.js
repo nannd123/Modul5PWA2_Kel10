@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import gunService from '../services/gunService'
+import { toDisplayMessage } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
 // useGuns — fetch the paginated / filtered product list from the API.
@@ -29,10 +30,10 @@ export function useGuns(params = {}) {
         setGuns(response.data || [])
         setPagination(response.pagination || null)
       } else {
-        setError(response.message || 'Failed to fetch products.')
+        setError(toDisplayMessage(response.message, 'Failed to fetch products.'))
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while fetching products.')
+      setError(toDisplayMessage(err, 'An error occurred while fetching products.'))
       setGuns([])
     } finally {
       setLoading(false)
@@ -72,10 +73,10 @@ export function useGunById(id) {
       if (response.success) {
         setGun(response.data)
       } else {
-        setError(response.message || 'Product not found.')
+        setError(toDisplayMessage(response.message, 'Product not found.'))
       }
     } catch (err) {
-      setError(err.message || 'Failed to load product details.')
+      setError(toDisplayMessage(err, 'Failed to load product details.'))
       setGun(null)
     } finally {
       setLoading(false)

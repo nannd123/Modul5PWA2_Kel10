@@ -7,6 +7,7 @@ import GunDetail from '../components/gun/GunDetail'
 import AdvancedFilter from '../components/common/AdvancedFilter'
 import ConfirmModal from '../components/modals/ConfirmModal'
 import gunService from '../services/gunService'
+import { toDisplayMessage } from '../utils/helpers'
 import {
   matchesSearch,
   matchesCategory,
@@ -69,7 +70,7 @@ export default function Catalog({ onNavigate }) {
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      setDeleteError(err.message || 'Failed to delete.')
+      setDeleteError(toDisplayMessage(err, 'Failed to delete.'))
     } finally {
       setDeleting(false)
     }
@@ -140,7 +141,7 @@ export default function Catalog({ onNavigate }) {
         {!loading && error && !useLocal && (
           <div className="state-box state-box--error">
             <AlertCircle size={28} />
-            <p>{error}</p>
+            <p>{toDisplayMessage(error, 'Failed to fetch products.')}</p>
             <div className="state-box__actions">
               <button type="button" className="btn btn--outline" onClick={refetch}>
                 <RefreshCw size={16} /> Retry

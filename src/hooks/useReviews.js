@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import reviewService from '../services/reviewService'
+import { toDisplayMessage } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
 // useReviews — fetch reviews for a specific product.
@@ -24,10 +25,10 @@ export function useReviews(gunId) {
       if (response.success) {
         setReviews(response.data || [])
       } else {
-        setError(response.message || 'Failed to fetch reviews.')
+        setError(toDisplayMessage(response.message, 'Failed to fetch reviews.'))
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while fetching reviews.')
+      setError(toDisplayMessage(err, 'An error occurred while fetching reviews.'))
       setReviews([])
     } finally {
       setLoading(false)
@@ -62,11 +63,11 @@ export function useCreateReview() {
         setSuccess(true)
         return response.data
       } else {
-        setError(response.message || 'Failed to submit review.')
+        setError(toDisplayMessage(response.message, 'Failed to submit review.'))
         return null
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while submitting review.')
+      setError(toDisplayMessage(err, 'An error occurred while submitting review.'))
       return null
     } finally {
       setLoading(false)

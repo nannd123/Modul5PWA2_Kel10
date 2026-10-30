@@ -20,6 +20,7 @@ import {
   formatDraftTime,
 } from '../utils/draftStorage'
 import ConfirmModal from '../components/modals/ConfirmModal'
+import { toDisplayMessage } from '../utils/helpers'
 
 /**
  * CreateGunPage — Create a new weapon / hardware item with image upload,
@@ -285,7 +286,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
         throw new Error(response.message || 'Failed to create product.')
       }
     } catch (err) {
-      setError(err.message || 'Error occurred while saving product to server.')
+      setError(toDisplayMessage(err, 'Error occurred while saving product to server.'))
     } finally {
       setCreating(false)
     }

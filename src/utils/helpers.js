@@ -80,3 +80,35 @@ export const averageRating = (reviews) => {
   const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0)
   return Math.round((sum / reviews.length) * 10) / 10
 }
+
+
+/**
+ * Convert API errors (which may be nested objects) into safe UI text.
+ * React cannot render plain objects directly as children.
+ */
+export const toDisplayMessage = (value, fallback = 'An unexpected error occurred.') => {
+  if (typeof value === 'string' && value.trim()) return value
+
+  if (value instanceof Error) {
+    return toDisplayMessage(value.message, fallback)
+  }
+
+  if (value && typeof value === 'object') {
+    const nested = value.message ?? value.error_description ?? value.msg ?? value.error
+    if (nested !== undefined && nested !== value) {
+      return toDisplayMessage(nested, fallback)
+    }
+
+    if (value.code !== undefined && value.code !== null) {
+      return `Request failed (${String(value.code)}).`
+    }
+
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return fallback
+    }
+  }
+
+  return fallback
+}
