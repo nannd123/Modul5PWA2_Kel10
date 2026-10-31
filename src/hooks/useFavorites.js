@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import favoriteService from '../services/favoriteService'
+import { API_CONFIGURED } from '../config/api'
 import { getUserIdentifier } from '../services/userService'
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,12 @@ export function useFavorites() {
   const userIdentifier = getUserIdentifier()
 
   const fetchFavorites = useCallback(async () => {
+    if (!API_CONFIGURED) {
+      setFavorites(readLocalFavs())
+      setIsLocal(true)
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       setError(null)
@@ -78,7 +85,9 @@ export function useToggleFavorite() {
   const userIdentifier = getUserIdentifier()
 
   const toggleFavorite = async (gunId) => {
+    // Reuse the existing catch fallback without touching the network.
     try {
+      if (!API_CONFIGURED) throw new Error('API backend is not configured')
       setLoading(true)
       setError(null)
 

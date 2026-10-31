@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import reviewService from '../services/reviewService'
+import { API_CONFIGURED } from '../config/api'
 import { toDisplayMessage } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
@@ -12,7 +13,8 @@ export function useReviews(gunId) {
   const [error, setError] = useState(null)
 
   const fetchReviews = useCallback(async () => {
-    if (!gunId) {
+    if (!API_CONFIGURED || !gunId || String(gunId).startsWith('local-')) {
+      setReviews([])
       setLoading(false)
       return
     }
@@ -52,6 +54,10 @@ export function useCreateReview() {
   const [success, setSuccess] = useState(false)
 
   const createReview = async (gunId, reviewData) => {
+    if (!API_CONFIGURED || String(gunId).startsWith('local-')) {
+      setError('Reviews require a connected API backend.')
+      return null
+    }
     try {
       setLoading(true)
       setError(null)

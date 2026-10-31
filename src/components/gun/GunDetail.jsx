@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Star, Send, Loader } from 'lucide-react'
 import FavoriteButton from '../common/FavoriteButton'
 import { useReviews, useCreateReview } from '../../hooks/useReviews'
+import { API_CONFIGURED } from '../../config/api'
 import { getUserIdentifier } from '../../services/userService'
 import { formatPrice, averageRating } from '../../utils/helpers'
 
@@ -19,6 +20,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
+  const canReview = Boolean(API_CONFIGURED && gun.id && !String(gun.id).startsWith('local-'))
 
   // Reviews
   const { reviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(gun.id)
@@ -136,7 +138,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
         <h2>Reviews</h2>
 
         {/* Submit review */}
-        <form className="review-form" onSubmit={handleSubmitReview}>
+        {canReview ? (<form className="review-form" onSubmit={handleSubmitReview}>
           <div className="review-stars">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -183,10 +185,10 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
               Reviews require a server-generated product ID. This product is local-only.
             </p>
           )}
-        </form>
+        </form>) : (<p className="detail-empty">Reviews are unavailable for local demo items.</p>)}
 
         {/* Existing reviews */}
-        {reviewsLoading ? (
+        {canReview && (reviewsLoading ? (
           <p className="detail-loading">Loading reviews…</p>
         ) : reviews.length > 0 ? (
           <ul className="review-list">
@@ -211,7 +213,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
           </ul>
         ) : (
           <p className="detail-empty">No reviews yet. Be the first!</p>
-        )}
+        ))}
       </section>
     </div>
   )

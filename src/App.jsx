@@ -13,6 +13,7 @@ import PWABadge from './components/PWABadge.jsx'
 import ConfirmModal from './components/modals/ConfirmModal.jsx'
 import SplashScreen from './components/common/SplashScreen.jsx'
 import gunService from './services/gunService.js'
+import { API_CONFIGURED } from './config/api.js'
 import './App.css'
 
 function App() {
@@ -62,7 +63,7 @@ function App() {
       <Header
         tab={mode === 'list' ? tab : ''}
         onTab={(newTab) => handleNavigate(newTab)}
-        onNavigateCreate={() => handleNavigate('Create')}
+        onNavigateCreate={API_CONFIGURED ? () => handleNavigate('Create') : undefined}
       />
 
       <main className="main">
@@ -93,8 +94,8 @@ function App() {
           <GunDetail
             gun={selectedGun}
             onBack={handleBackToList}
-            onEdit={(g) => handleNavigate('Edit', g)}
-            onDelete={(g) => setDeleteTarget(g)}
+            onEdit={API_CONFIGURED && !String(selectedGun.id).startsWith('local-') ? (g) => handleNavigate('Edit', g) : undefined}
+            onDelete={API_CONFIGURED && !String(selectedGun.id).startsWith('local-') ? (g) => setDeleteTarget(g) : undefined}
           />
         )}
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import gunService from '../services/gunService'
+import { API_CONFIGURED } from '../config/api'
 import { toDisplayMessage } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
@@ -12,7 +13,7 @@ import { toDisplayMessage } from '../utils/helpers'
 
 export function useGuns(params = {}) {
   const [guns, setGuns] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(API_CONFIGURED)
   const [error, setError] = useState(null)
   const [pagination, setPagination] = useState(null)
 
@@ -20,6 +21,15 @@ export function useGuns(params = {}) {
   const paramKey = JSON.stringify(params)
 
   const fetchGuns = useCallback(async () => {
+    // No backend: don't send requests to the static Vercel site.
+    if (!API_CONFIGURED) {
+      setGuns([])
+      setPagination(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -56,10 +66,16 @@ export function useGuns(params = {}) {
 
 export function useGunById(id) {
   const [gun, setGun] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(API_CONFIGURED)
   const [error, setError] = useState(null)
 
   const fetchGun = useCallback(async () => {
+    if (!API_CONFIGURED) {
+      setGun(null)
+      setError('API backend is not configured.')
+      setLoading(false)
+      return
+    }
     if (!id) {
       setLoading(false)
       return

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { RefreshCw, Plus, Loader, AlertCircle, PackageOpen } from 'lucide-react'
+import { RefreshCw, Plus, Loader, PackageOpen } from 'lucide-react'
 import { useGuns } from '../hooks/useGuns'
+import { API_CONFIGURED } from '../config/api'
 import GUNS_LOCAL from '../data/guns'
 import GunCard from '../components/gun/GunCard'
 import GunDetail from '../components/gun/GunDetail'
@@ -27,16 +28,17 @@ import {
 export default function Catalog({ onNavigate }) {
   // ---- API data ----
   const { guns: apiGuns, loading, error, refetch } = useGuns({ limit: 50 })
-  const [useLocal, setUseLocal] = useState(false)
+  // Missing backend or failed initial fetch: show demo data automatically.
+  const isLocalMode = !API_CONFIGURED || Boolean(error && apiGuns.length === 0)
 
   // Decide data source
   const rawGuns = useMemo(() => {
-    if (useLocal || (error && apiGuns.length === 0)) {
+    if (isLocalMode) {
       // Enrich local data with synthetic ids so FavoriteButton and detail work
       return GUNS_LOCAL.map((g, i) => ({ ...g, id: g.id || `local-${i}` }))
     }
     return apiGuns
-  }, [apiGuns, error, useLocal])
+  }, [apiGuns, isLocalMode])
 
   // ---- filters / sort ----
   const [search, setSearch] = useState('')
@@ -82,8 +84,8 @@ export default function Catalog({ onNavigate }) {
       <GunDetail
         gun={selectedGun}
         onBack={() => setSelectedGun(null)}
-        onEdit={(g) => onNavigate && onNavigate('Edit', g)}
-        onDelete={(g) => { setSelectedGun(null); setDeleteTarget(g) }}
+        onEdit={!isLocalMode && onNavigate ? (g) => onNavigate('Edit', g) : undefined}
+        onDelete={isLocalMode ? undefined : (g) => { setSelectedGun(null); setDeleteTarget(g) }}
       />
     )
   }
@@ -106,7 +108,7 @@ export default function Catalog({ onNavigate }) {
             <span className="count">
               {filteredGuns.length} piece{filteredGuns.length !== 1 ? 's' : ''}
             </span>
-            {onNavigate && (
+            {onNavigate && !isLocalMode && (
               <button
                 type="button"
                 className="btn btn--primary btn--sm"
@@ -138,26 +140,24 @@ export default function Catalog({ onNavigate }) {
           </div>
         )}
 
-        {!loading && error && !useLocal && (
-          <div className="state-box state-box--error">
-            <AlertCircle size={28} />
-            <p>{toDisplayMessage(error, 'Failed to fetch products.')}</p>
-            <div className="state-box__actions">
-              <button type="button" className="btn btn--outline" onClick={refetch}>
-                <RefreshCw size={16} /> Retry
+        {!loading && isLocalMode && (
+          <div className="local-banner" role="status">
+            <span>
+              {API_CONFIGURED ? (
+                <>API unavailable: {toDisplayMessage(error, 'Unable to fetch products.')} Showing local demo data; editing is disabled.</>
+              ) : (
+                <>API backend is not configured. Showing local demo data; editing is disabled. Set VITE_API_BASE_URL in Vercel to enable the live catalog.</>
+              )}
+            </span>
+            {API_CONFIGURED && (
+              <button type="button" className="link-btn" onClick={refetch}>
+                <RefreshCw size={14} /> Retry API
               </button>
-              <button
-                type="button"
-                className="btn btn--outline"
-                onClick={() => setUseLocal(true)}
-              >
-                View Local Catalog
-              </button>
-            </div>
+            )}
           </div>
         )}
 
-        {!loading && filteredGuns.length === 0 && !error && (
+        {!loading && filteredGuns.length === 0 && !isLocalMode && !error && (
           <div className="state-box">
             <PackageOpen size={28} />
             <p>No products match your search.</p>
@@ -172,24 +172,11 @@ export default function Catalog({ onNavigate }) {
                 key={gun.id || gun.name}
                 gun={gun}
                 onSelect={setSelectedGun}
-                onEdit={onNavigate ? (g) => onNavigate('Edit', g) : undefined}
-                onDelete={setDeleteTarget}
+                onEdit={!isLocalMode && onNavigate ? (g) => onNavigate('Edit', g) : undefined}
+                onDelete={isLocalMode ? undefined : setDeleteTarget}
               />
             ))}
           </ul>
-        )}
-
-        {useLocal && (
-          <p className="local-notice">
-            Showing local catalog (server unavailable).{' '}
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => { setUseLocal(false); refetch() }}
-            >
-              Retry server
-            </button>
-          </p>
         )}
       </section>
 

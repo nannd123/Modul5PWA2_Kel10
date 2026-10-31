@@ -1518,3 +1518,25 @@
     transform: translateY(0);
   }
 }
+
+/* API connectivity status: compact notice instead of a full-page error. */
+.local-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 16px 0 20px;
+  border: 1px solid #d6dee5;
+  border-radius: 6px;
+  background: #f8fafb;
+  color: #465565;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.local-banner .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

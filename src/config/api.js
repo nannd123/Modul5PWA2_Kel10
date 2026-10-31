@@ -5,7 +5,8 @@ import { toDisplayMessage } from '../utils/helpers'
 // Base URL & Supabase Key Configuration
 // Read from environment variables (.env)
 // ---------------------------------------------------------------------------
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const API_CONFIGURED = Boolean(BASE_URL)
 const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
@@ -80,4 +81,4 @@ apiClient.interceptors.response.use(
   },
 )
 
-export { apiClient, BASE_URL, SUPABASE_KEY, IS_SUPABASE }
+export { apiClient, BASE_URL, API_CONFIGURED, SUPABASE_KEY, IS_SUPABASE }
