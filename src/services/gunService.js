@@ -1,4 +1,5 @@
 import { apiClient, IS_SUPABASE } from '../config/api'
+import { invalidateQuery } from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
 // Normalizer — standardizes product shape whether received from Supabase
@@ -126,6 +127,7 @@ class GunService {
    * Create a new product.
    */
   async createGun(data) {
+    invalidateQuery()
     if (IS_SUPABASE) {
       const specsArray = Array.isArray(data.ingredients)
         ? data.ingredients.map((i) => `${i.name}: ${i.quantity}`)
@@ -147,15 +149,19 @@ class GunService {
         headers: { Prefer: 'return=representation' },
       })
       const created = Array.isArray(res) ? res[0] : res
+      invalidateQuery()
       return { success: true, data: normalizeProduct(created) }
     }
-    return apiClient.post('/api/v1/recipes', data)
+    const response = await apiClient.post('/api/v1/recipes', data)
+    invalidateQuery()
+    return response
   }
 
   /**
    * Update existing product.
    */
   async updateGun(id, data) {
+    invalidateQuery()
     if (IS_SUPABASE) {
       const specsArray = Array.isArray(data.ingredients)
         ? data.ingredients.map((i) => `${i.name}: ${i.quantity}`)
@@ -180,9 +186,12 @@ class GunService {
         headers: { Prefer: 'return=representation' },
       })
       const updated = Array.isArray(res) ? res[0] : res
+      invalidateQuery()
       return { success: true, data: normalizeProduct(updated) }
     }
-    return apiClient.put(`/api/v1/recipes/${id}`, data)
+    const response = await apiClient.put(`/api/v1/recipes/${id}`, data)
+    invalidateQuery()
+    return response
   }
 
   /**
@@ -199,11 +208,15 @@ class GunService {
    * Delete product.
    */
   async deleteGun(id) {
+    invalidateQuery()
     if (IS_SUPABASE) {
       await apiClient.delete(`/rest/v1/products?id=eq.${id}`)
+      invalidateQuery()
       return { success: true }
     }
-    return apiClient.delete(`/api/v1/recipes/${id}`)
+    const response = await apiClient.delete(`/api/v1/recipes/${id}`)
+    invalidateQuery()
+    return response
   }
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import reviewService from '../services/reviewService'
 import { API_CONFIGURED } from '../config/api'
 import { toDisplayMessage } from '../utils/helpers'
+import { getCachedQuery, invalidateQuery } from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
 // useReviews — fetch reviews for a specific product.
@@ -12,7 +13,7 @@ export function useReviews(gunId) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async (force = false) => {
     if (!API_CONFIGURED || !gunId || String(gunId).startsWith('local-')) {
       setReviews([])
       setLoading(false)
@@ -22,7 +23,11 @@ export function useReviews(gunId) {
       setLoading(true)
       setError(null)
 
-      const response = await reviewService.getReviews(gunId)
+      const response = await getCachedQuery(
+        `reviews:${gunId}`,
+        () => reviewService.getReviews(gunId),
+        { force },
+      )
 
       if (response.success) {
         setReviews(response.data || [])
@@ -66,6 +71,7 @@ export function useCreateReview() {
       const response = await reviewService.createReview(gunId, reviewData)
 
       if (response.success) {
+        invalidateQuery(`reviews:${gunId}`)
         setSuccess(true)
         return response.data
       } else {
@@ -81,4 +87,47 @@ export function useCreateReview() {
   }
 
   return { createReview, loading, error, success }
+}
+
+export function useReviewMutations() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const updateReview = async (reviewId, reviewData) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await reviewService.updateReview(reviewId, reviewData)
+      if (response.success) {
+        invalidateQuery()
+        return response.data || true
+      }
+      throw new Error(toDisplayMessage(response.message, 'Failed to update review.'))
+    } catch (err) {
+      setError(toDisplayMessage(err, 'Failed to update review.'))
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteReview = async (reviewId) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await reviewService.deleteReview(reviewId)
+      if (response.success) {
+        invalidateQuery()
+        return true
+      }
+      throw new Error(toDisplayMessage(response.message, 'Failed to delete review.'))
+    } catch (err) {
+      setError(toDisplayMessage(err, 'Failed to delete review.'))
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { updateReview, deleteReview, loading, error }
 }

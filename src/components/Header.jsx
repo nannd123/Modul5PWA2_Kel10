@@ -1,16 +1,18 @@
 import { Plus } from 'lucide-react'
 import { useFavorites } from '../hooks/useFavorites'
+import { useCart } from '../hooks/useCart'
 
 const NAV_ITEMS = [
   { id: 'Catalog', label: 'Catalog' },
   { id: 'Favorites', label: 'Favorites', hasBadge: true },
+  { id: 'Merchandise', label: 'Merch' },
+  { id: 'Cart', label: 'Cart', hasCartBadge: true },
   { id: 'Profile', label: 'Profile' },
-  { id: 'About', label: 'About' },
-  { id: 'Contact', label: 'Contact' },
 ]
 
 function Header({ tab, onTab, onNavigateCreate }) {
   const { favorites } = useFavorites()
+  const { count: cartCount } = useCart()
   const favCount = favorites ? favorites.length : 0
 
   return (
@@ -33,6 +35,9 @@ function Header({ tab, onTab, onNavigateCreate }) {
             {item.label}
             {item.hasBadge && favCount > 0 && (
               <span className="nav-badge">{favCount}</span>
+            )}
+            {item.hasCartBadge && cartCount > 0 && (
+              <span className="nav-badge">{cartCount}</span>
             )}
           </button>
         ))}

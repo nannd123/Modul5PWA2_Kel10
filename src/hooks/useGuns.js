@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import gunService from '../services/gunService'
 import { API_CONFIGURED } from '../config/api'
 import { toDisplayMessage } from '../utils/helpers'
+import { getCachedQuery, invalidateQuery } from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
 // useGuns — fetch the paginated / filtered product list from the API.
@@ -20,7 +21,7 @@ export function useGuns(params = {}) {
   // Serialise params so the effect re-runs when they change.
   const paramKey = JSON.stringify(params)
 
-  const fetchGuns = useCallback(async () => {
+  const fetchGuns = useCallback(async (force = false) => {
     // No backend: don't send requests to the static Vercel site.
     if (!API_CONFIGURED) {
       setGuns([])
@@ -34,7 +35,11 @@ export function useGuns(params = {}) {
       setLoading(true)
       setError(null)
 
-      const response = await gunService.getGuns(params)
+      const response = await getCachedQuery(
+        `guns:${paramKey}`,
+        () => gunService.getGuns(params),
+        { force },
+      )
 
       if (response.success) {
         setGuns(response.data || [])
@@ -57,6 +62,8 @@ export function useGuns(params = {}) {
 
   return { guns, loading, error, pagination, refetch: fetchGuns }
 }
+
+export const invalidateGuns = () => invalidateQuery()
 
 // ---------------------------------------------------------------------------
 // useGunById — fetch a single product by its UUID.

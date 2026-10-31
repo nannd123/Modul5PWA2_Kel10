@@ -19,6 +19,22 @@ npm run preview  # serve the production build
 npm run lint     # oxlint
 ```
 
+## Features
+
+- Product details can be shared with a link using the `?gun=<product-id>` URL.
+- Catalog, favorites, and profile pages load on demand; product and review GET
+  requests use an in-memory cache that is invalidated after changes.
+- The profile includes About, Contact, saved drafts, and a local archive with
+  restore support. Name and bio are edited on a separate page.
+- Reviews support editing and deletion by their author. Thumbs-up/down feedback
+  is stored locally in the current browser.
+- A separate merchandise-only catalog and persistent cart demonstrate local
+  state with `createPersistentStore` and `useStore`. The cart accepts only the
+  fixed merchandise IDs; products from the main catalog cannot be added.
+- Merchandise cart checkout opens WhatsApp with a prefilled order message.
+
+The cart and WhatsApp checkout are limited to the separate merchandise page.
+
 ## Structure
 
 ```

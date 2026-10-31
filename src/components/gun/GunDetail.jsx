@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ArrowLeft, Star, Send, Loader } from 'lucide-react'
+import { ArrowLeft, Star, Send, Loader, Share2, ThumbsDown, ThumbsUp, Trash2, Pencil } from 'lucide-react'
 import FavoriteButton from '../common/FavoriteButton'
-import { useReviews, useCreateReview } from '../../hooks/useReviews'
+import { useReviews, useCreateReview, useReviewMutations } from '../../hooks/useReviews'
 import { API_CONFIGURED } from '../../config/api'
 import { getUserIdentifier } from '../../services/userService'
 import { formatPrice, averageRating } from '../../utils/helpers'
+import reviewVoteService from '../../services/reviewVoteService'
 
 /**
  * Full-screen product detail view.
@@ -15,7 +16,7 @@ import { formatPrice, averageRating } from '../../utils/helpers'
  * @param {Function} [props.onEdit]  — navigate to edit page
  * @param {Function} [props.onDelete]— trigger delete flow
  */
-export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
+export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
   const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
@@ -29,6 +30,10 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
   const [comment, setComment] = useState('')
   const [reviewError, setReviewError] = useState('')
   const [reviewSuccess, setReviewSuccess] = useState('')
+  const [editingReview, setEditingReview] = useState(null)
+  const [voteRevision, setVoteRevision] = useState(0)
+  const [shareMessage, setShareMessage] = useState('')
+  const { updateReview, deleteReview, loading: changingReview } = useReviewMutations()
 
   const avgRating = gun.average_rating || averageRating(reviews)
   const reviewCount = gun.review_count ?? reviews.length
@@ -43,19 +48,51 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
       return
     }
 
-    const result = await createReview(gun.id, {
+    const reviewData = {
       user_identifier: getUserIdentifier(),
       rating,
       comment: comment.trim(),
-    })
+    }
+    const result = editingReview
+      ? await updateReview(editingReview.id, reviewData)
+      : await createReview(gun.id, reviewData)
 
     if (result) {
-      setReviewSuccess('Review submitted!')
+      setReviewSuccess(editingReview ? 'Review updated!' : 'Review submitted!')
       setComment('')
       setRating(5)
+      setEditingReview(null)
       refetchReviews()
     } else {
-      setReviewError('Could not submit review. The server may be unavailable.')
+      setReviewError(editingReview ? 'Could not update review.' : 'Could not submit review. The server may be unavailable.')
+    }
+  }
+
+  const handleShare = async () => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('gun', String(gun.id))
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      setShareMessage('Share link copied.')
+    } catch {
+      setShareMessage('Could not copy the share link. Check browser clipboard permissions.')
+    }
+    window.setTimeout(() => setShareMessage(''), 3000)
+  }
+
+  const handleDeleteReview = async (review) => {
+    if (!window.confirm('Delete your review?')) return
+    const deleted = await deleteReview(review.id)
+    if (deleted) refetchReviews()
+    else setReviewError('Could not delete review.')
+  }
+
+  const handleVote = (reviewId, vote) => {
+    try {
+      reviewVoteService.setVote(reviewId, getUserIdentifier(), vote)
+      setVoteRevision((revision) => revision + 1)
+    } catch {
+      setReviewError('Could not save your vote on this device.')
     }
   }
 
@@ -86,17 +123,21 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
 
           <div className="detail-actions">
             <FavoriteButton gunId={gun.id || gun.name} />
+            <button type="button" className="btn btn--outline" onClick={handleShare}>
+              <Share2 size={16} /> Share link
+            </button>
             {onEdit && (
               <button type="button" className="btn btn--outline" onClick={() => onEdit(gun)}>
                 Edit
               </button>
             )}
-            {onDelete && (
-              <button type="button" className="btn btn--danger" onClick={() => onDelete(gun)}>
-                Delete
+            {onArchive && (
+              <button type="button" className="btn btn--danger" onClick={() => onArchive(gun)}>
+                Archive
               </button>
             )}
           </div>
+          {shareMessage && <p className="form-hint" role="status">{shareMessage}</p>}
         </div>
       </div>
 
@@ -139,6 +180,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
 
         {/* Submit review */}
         {canReview ? (<form className="review-form" onSubmit={handleSubmitReview}>
+          <h3 className="section-title">{editingReview ? 'Edit your review' : 'Write a review'}</h3>
           <div className="review-stars">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -169,14 +211,21 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
           <button
             type="submit"
             className="btn btn--primary"
-            disabled={submitting || !gun.id}
+            disabled={submitting || changingReview || !gun.id}
           >
-            {submitting ? (
-              <><Loader size={16} className="spin" /> Submitting…</>
+            {submitting || changingReview ? (
+              <><Loader size={16} className="spin" /> Saving…</>
             ) : (
-              <><Send size={16} /> Submit Review</>
+              <><Send size={16} /> {editingReview ? 'Save Review' : 'Submit Review'}</>
             )}
           </button>
+          {editingReview && (
+            <button type="button" className="btn btn--outline btn--sm" onClick={() => {
+              setEditingReview(null)
+              setComment('')
+              setRating(5)
+            }}>Cancel edit</button>
+          )}
 
           {reviewError && <p className="form-error">{reviewError}</p>}
           {reviewSuccess && <p className="form-success">{reviewSuccess}</p>}
@@ -208,6 +257,34 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
                   </span>
                 </div>
                 {rev.comment && <p className="review-comment">{rev.comment}</p>}
+                <div className="review-controls" data-vote-revision={voteRevision}>
+                  {(() => {
+                    const votes = reviewVoteService.countsFor(rev.id, getUserIdentifier())
+                    return (
+                      <>
+                        <button type="button" className={`review-vote ${votes.mine === 'up' ? 'active' : ''}`} onClick={() => handleVote(rev.id, 'up')} aria-label="Thumbs up">
+                          <ThumbsUp size={15} /> {votes.up}
+                        </button>
+                        <button type="button" className={`review-vote ${votes.mine === 'down' ? 'active' : ''}`} onClick={() => handleVote(rev.id, 'down')} aria-label="Thumbs down">
+                          <ThumbsDown size={15} /> {votes.down}
+                        </button>
+                      </>
+                    )
+                  })()}
+                  {(rev.owner_id === getUserIdentifier() || rev.user_identifier === getUserIdentifier()) && (
+                    <>
+                      <button type="button" className="review-vote" onClick={() => {
+                        setEditingReview(rev)
+                        setRating(rev.rating)
+                        setComment(rev.comment || '')
+                        setReviewError('')
+                        setReviewSuccess('')
+                        window.scrollTo({ top: document.querySelector('.review-form')?.offsetTop || 0, behavior: 'smooth' })
+                      }} aria-label="Edit your review"><Pencil size={14} /> Edit</button>
+                      <button type="button" className="review-vote" onClick={() => handleDeleteReview(rev)} aria-label="Delete your review"><Trash2 size={14} /> Delete</button>
+                    </>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

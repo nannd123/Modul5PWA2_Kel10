@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { RefreshCw, Plus, Loader, PackageOpen } from 'lucide-react'
 import { useGuns } from '../hooks/useGuns'
 import { API_CONFIGURED } from '../config/api'
@@ -7,7 +7,7 @@ import GunCard from '../components/gun/GunCard'
 import GunDetail from '../components/gun/GunDetail'
 import AdvancedFilter from '../components/common/AdvancedFilter'
 import ConfirmModal from '../components/modals/ConfirmModal'
-import gunService from '../services/gunService'
+import archiveService from '../services/archiveService'
 import { toDisplayMessage } from '../utils/helpers'
 import {
   matchesSearch,
@@ -45,6 +45,7 @@ export default function Catalog({ onNavigate }) {
   const [activeCategory, setActiveCategory] = useState('All')
   const [sortKey, setSortKey] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
+  const [archives, setArchives] = useState(archiveService.getArchives)
 
   const categories = useMemo(() => extractCategories(rawGuns), [rawGuns])
 
@@ -54,6 +55,10 @@ export default function Catalog({ onNavigate }) {
     )
     return sortItems(result, sortKey, sortOrder)
   }, [rawGuns, search, activeCategory, sortKey, sortOrder])
+  const visibleGuns = useMemo(
+    () => filteredGuns.filter((gun) => !archives.some((item) => String(item.id) === String(gun.id))),
+    [filteredGuns, archives],
+  )
 
   // ---- detail view ----
   const [selectedGun, setSelectedGun] = useState(null)
@@ -63,14 +68,16 @@ export default function Catalog({ onNavigate }) {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
+  useEffect(() => archiveService.subscribe(() => setArchives(archiveService.getArchives())), [])
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
       setDeleting(true)
       setDeleteError('')
-      await gunService.deleteGun(deleteTarget.id)
+      archiveService.archiveProduct(deleteTarget)
       setDeleteTarget(null)
-      refetch()
+      setArchives(archiveService.getArchives())
     } catch (err) {
       setDeleteError(toDisplayMessage(err, 'Failed to delete.'))
     } finally {
@@ -85,7 +92,7 @@ export default function Catalog({ onNavigate }) {
         gun={selectedGun}
         onBack={() => setSelectedGun(null)}
         onEdit={!isLocalMode && onNavigate ? (g) => onNavigate('Edit', g) : undefined}
-        onDelete={isLocalMode ? undefined : (g) => { setSelectedGun(null); setDeleteTarget(g) }}
+        onArchive={(g) => { setSelectedGun(null); setDeleteTarget(g) }}
       />
     )
   }
@@ -106,7 +113,7 @@ export default function Catalog({ onNavigate }) {
           <h2>Current stock</h2>
           <div className="list-head-right">
             <span className="count">
-              {filteredGuns.length} piece{filteredGuns.length !== 1 ? 's' : ''}
+              {visibleGuns.length} piece{visibleGuns.length !== 1 ? 's' : ''}
             </span>
             {onNavigate && !isLocalMode && (
               <button
@@ -157,7 +164,7 @@ export default function Catalog({ onNavigate }) {
           </div>
         )}
 
-        {!loading && filteredGuns.length === 0 && !isLocalMode && !error && (
+        {!loading && visibleGuns.length === 0 && !isLocalMode && !error && (
           <div className="state-box">
             <PackageOpen size={28} />
             <p>No products match your search.</p>
@@ -165,15 +172,15 @@ export default function Catalog({ onNavigate }) {
         )}
 
         {/* Product grid */}
-        {filteredGuns.length > 0 && (
+        {visibleGuns.length > 0 && (
           <ul className="stock">
-            {filteredGuns.map((gun) => (
+            {visibleGuns.map((gun) => (
               <GunCard
                 key={gun.id || gun.name}
                 gun={gun}
                 onSelect={setSelectedGun}
                 onEdit={!isLocalMode && onNavigate ? (g) => onNavigate('Edit', g) : undefined}
-                onDelete={isLocalMode ? undefined : setDeleteTarget}
+                onArchive={setDeleteTarget}
               />
             ))}
           </ul>
@@ -183,9 +190,9 @@ export default function Catalog({ onNavigate }) {
       {/* Delete confirmation */}
       <ConfirmModal
         open={!!deleteTarget}
-        title="Delete Product"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title="Archive Product"
+        message={`Move "${deleteTarget?.name}" to your profile archive? You can restore it later.`}
+        confirmLabel="Archive"
         danger
         loading={deleting}
         onConfirm={handleDelete}

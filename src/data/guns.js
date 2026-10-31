@@ -55,4 +55,6 @@ const GUNS = [
   },
 ]
 
+export const GUNS_BY_ID = new Map(GUNS.map((item) => [item.id, item]))
+
 export default GUNS
