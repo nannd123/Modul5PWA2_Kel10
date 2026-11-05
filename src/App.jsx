@@ -14,7 +14,6 @@ import './App.css'
 const Catalog = lazy(() => import('./pages/Catalog.jsx'))
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage.jsx'))
 const MerchandisePage = lazy(() => import('./pages/MerchandisePage.jsx'))
-const CartPage = lazy(() => import('./pages/CartPage.jsx'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage.jsx'))
 const CreateGunPage = lazy(() => import('./pages/CreateGunPage.jsx'))
@@ -172,7 +171,6 @@ function App() {
               />
             )}
             {tab === 'Merchandise' && <MerchandisePage />}
-            {tab === 'Cart' && <CartPage onShopMerchandise={() => setTab('Merchandise')} />}
             {tab === 'Profile' && (
               <ProfilePage
                 onReplaySplash={() => setShowSplash(true)}

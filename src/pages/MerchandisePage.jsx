@@ -1,22 +1,11 @@
-import { useState } from 'react'
-import { Award, Check, Shirt, ShoppingBag, Tags } from 'lucide-react'
+import { Award, Shirt, ShoppingBag, Tags } from 'lucide-react'
 import MERCHANDISE from '../data/merchandise'
-import { useCart } from '../hooks/useCart'
 
 const ICONS = { shirt: Shirt, cap: Award, stickers: Tags }
 const formatRupiah = (amount) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)
 
 export default function MerchandisePage() {
-  const { addItem, count } = useCart()
-  const [addedId, setAddedId] = useState('')
-
-  const handleAdd = (item) => {
-    if (!addItem(item)) return
-    setAddedId(item.id)
-    window.setTimeout(() => setAddedId(''), 1500)
-  }
-
   return (
     <div className="merch-page">
       <section className="masthead">
@@ -25,7 +14,6 @@ export default function MerchandisePage() {
       </section>
       <div className="list-head">
         <h2>Merchandise</h2>
-        <span className="count">{count} item{count !== 1 ? 's' : ''} in cart</span>
       </div>
       <ul className="merch-grid">
         {MERCHANDISE.map((item) => {
@@ -40,9 +28,6 @@ export default function MerchandisePage() {
                 <h3>{item.name}</h3>
                 <p>{item.description}</p>
                 <strong className="merch-price">{formatRupiah(item.price)}</strong>
-                <button type="button" className="btn btn--primary" onClick={() => handleAdd(item)}>
-                  {addedId === item.id ? <><Check size={16} /> Added</> : <><ShoppingBag size={16} /> Add to cart</>}
-                </button>
               </div>
             </li>
           )

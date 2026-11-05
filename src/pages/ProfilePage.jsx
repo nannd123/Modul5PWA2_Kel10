@@ -13,6 +13,8 @@ import {
 import About from './About'
 import Contact from './Contact'
 import userService from '../services/userService'
+import gunService from '../services/gunService'
+import { API_CONFIGURED } from '../config/api'
 import archiveService from '../services/archiveService'
 import { useFavorites } from '../hooks/useFavorites'
 import { getAllDrafts, deleteDraft, formatDraftTime } from '../utils/draftStorage'
@@ -27,6 +29,7 @@ export default function ProfilePage({ onReplaySplash, onEditProfile, onResumeDra
   const [feedback, setFeedback] = useState('')
   const [drafts, setDrafts] = useState(getAllDrafts)
   const [archives, setArchives] = useState(archiveService.getArchives)
+  const [deletingArchiveId, setDeletingArchiveId] = useState(null)
   const { favorites } = useFavorites()
 
   useEffect(() => archiveService.subscribe(() => setArchives(archiveService.getArchives())), [])
@@ -81,6 +84,28 @@ export default function ProfilePage({ onReplaySplash, onEditProfile, onResumeDra
   const handleRestoreArchive = (id) => {
     archiveService.restoreProduct(id)
     setArchives(archiveService.getArchives())
+  }
+
+  const handleDeleteArchive = async (item) => {
+    if (!window.confirm(`Permanently delete "${item.name || 'this product'}"? This cannot be undone.`)) return
+
+    const id = String(item.id)
+    try {
+      setDeletingArchiveId(id)
+      if (!id.startsWith('local-')) {
+        if (!API_CONFIGURED) {
+          throw new Error('Connect to the API before permanently deleting this product.')
+        }
+        await gunService.deleteGun(item.id)
+      }
+      archiveService.removePermanently(item.id)
+      setArchives(archiveService.getArchives())
+      notify('Product permanently deleted.')
+    } catch (error) {
+      notify(error.message || 'Failed to permanently delete product.')
+    } finally {
+      setDeletingArchiveId(null)
+    }
   }
 
   return (
@@ -191,6 +216,14 @@ export default function ProfilePage({ onReplaySplash, onEditProfile, onResumeDra
                   <div className="profile-record-actions">
                     <button type="button" className="btn btn--outline btn--sm" onClick={() => handleRestoreArchive(item.id)}>
                       <RotateCcw size={14} /> Restore
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--danger btn--sm"
+                      onClick={() => handleDeleteArchive(item)}
+                      disabled={deletingArchiveId === String(item.id)}
+                    >
+                      <Trash2 size={14} /> Delete permanently
                     </button>
                   </div>
                 </li>

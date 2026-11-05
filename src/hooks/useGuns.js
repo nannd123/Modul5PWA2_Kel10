@@ -76,7 +76,7 @@ export function useGunById(id) {
   const [loading, setLoading] = useState(API_CONFIGURED)
   const [error, setError] = useState(null)
 
-  const fetchGun = useCallback(async () => {
+  const fetchGun = useCallback(async (force = false) => {
     if (!API_CONFIGURED) {
       setGun(null)
       setError('API backend is not configured.')
@@ -91,7 +91,7 @@ export function useGunById(id) {
       setLoading(true)
       setError(null)
 
-      const response = await gunService.getGunById(id)
+      const response = await gunService.getGunById(id, { force })
 
       if (response.success) {
         setGun(response.data)

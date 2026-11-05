@@ -46,9 +46,9 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
     is_featured: false,
   })
 
-  const [currentImageUrl, setCurrentImageUrl] = useState('')
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [currentImageUrls, setCurrentImageUrls] = useState([])
+  const [imageFiles, setImageFiles] = useState([])
+  const [imagePreviews, setImagePreviews] = useState([])
   const [uploading, setUploading] = useState(false)
 
   // Specs & Steps
@@ -89,7 +89,10 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
             servings: data.servings || 1,
             is_featured: Boolean(data.is_featured),
           })
-          setCurrentImageUrl(data.image_url || data.image || '/guns/pistol.svg')
+          const imageUrls = Array.isArray(data.images) && data.images.length
+            ? data.images
+            : [data.image_url || data.image || '/guns/pistol.svg']
+          setCurrentImageUrls(imageUrls)
 
           if (data.ingredients && data.ingredients.length > 0) {
             setSpecs(data.ingredients.map((ing) => ({
@@ -132,9 +135,8 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       if (draft.formData) setFormData(draft.formData)
       if (draft.specs) setSpecs(draft.specs)
       if (draft.steps) setSteps(draft.steps)
-      if (draft.imagePreview) {
-        setImagePreview(draft.imagePreview)
-      }
+      if (Array.isArray(draft.imageUrls)) setCurrentImageUrls(draft.imageUrls)
+      else if (draft.imagePreview) setCurrentImageUrls([draft.imagePreview])
       setShowDraftModal(false)
       setSuccessMsg('Saved draft restored.')
       setTimeout(() => setSuccessMsg(''), 3000)
@@ -152,7 +154,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       formData,
       specs,
       steps,
-      imagePreview: imagePreview || currentImageUrl,
+      imageUrls: currentImageUrls,
     }
     const saved = saveDraft(draftData, targetId)
     if (saved) {
@@ -165,45 +167,74 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
 
   // Handle new image file
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size exceeds 5MB limit.')
-      return
-    }
-
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-    if (!allowed.includes(file.type)) {
+    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
+      setError('Each image must be under 5MB.')
+      e.target.value = ''
+      return
+    }
+    if (files.some((file) => !allowed.includes(file.type))) {
       setError('Allowed formats: .jpg, .jpeg, .png, .webp')
+      e.target.value = ''
       return
     }
 
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+    setImageFiles((current) => [...current, ...files])
+    setImagePreviews((current) => [
+      ...current,
+      ...files.map((file) => URL.createObjectURL(file)),
+    ])
     setError('')
+    e.target.value = ''
   }
 
-  const handleUploadNewImage = async () => {
-    if (!imageFile) return
+  const handleUploadNewImages = async () => {
+    if (imageFiles.length === 0) return
     try {
       setUploading(true)
-      const res = await uploadService.uploadImage(imageFile)
-      if (res.success && res.data?.url) {
-        setCurrentImageUrl(res.data.url)
-        setImageFile(null)
-        setImagePreview(null)
-        setSuccessMsg('New image uploaded successfully.')
+      setError('')
+      const results = await Promise.all(imageFiles.map(async (file, index) => {
+        try {
+          const result = await uploadService.uploadImage(file)
+          if (!result.success || !result.data?.url) {
+            throw new Error(result.message || 'Image upload failed.')
+          }
+          return { file, preview: imagePreviews[index], url: result.data.url }
+        } catch (error) {
+          return { file, preview: imagePreviews[index], error: toDisplayMessage(error, 'Image upload failed.') }
+        }
+      }))
+      const uploadedUrls = results.filter((result) => result.url).map((result) => result.url)
+      const failed = results.filter((result) => !result.url)
+      setCurrentImageUrls((current) => [...current, ...uploadedUrls])
+      imagePreviews
+        .filter((preview) => !failed.some((item) => item.preview === preview))
+        .forEach((preview) => URL.revokeObjectURL(preview))
+      setImageFiles(failed.map((item) => item.file))
+      setImagePreviews(failed.map((item) => item.preview))
+      if (failed.length) {
+        setError(`${failed.length} image${failed.length === 1 ? '' : 's'} could not be uploaded. Try again.`)
+      } else {
+        setSuccessMsg(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'} uploaded successfully.`)
         setTimeout(() => setSuccessMsg(''), 3000)
       }
     } catch (err) {
-      console.warn('Image upload failed, using local blob:', err)
-      setCurrentImageUrl(imagePreview)
-      setImageFile(null)
-      setImagePreview(null)
+      setError(toDisplayMessage(err, 'Could not upload all selected images. Try again.'))
     } finally {
       setUploading(false)
     }
+  }
+
+  const handleRemoveCurrentImage = (index) => {
+    setCurrentImageUrls((current) => current.filter((_, imageIndex) => imageIndex !== index))
+  }
+
+  const handleRemoveSelectedImage = (index) => {
+    URL.revokeObjectURL(imagePreviews[index])
+    setImageFiles((current) => current.filter((_, imageIndex) => imageIndex !== index))
+    setImagePreviews((current) => current.filter((_, imageIndex) => imageIndex !== index))
   }
 
   // Specs & Steps
@@ -266,6 +297,11 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       return
     }
 
+    if (imageFiles.length > 0) {
+      setError('Upload or remove the selected images before saving.')
+      return
+    }
+
     const payload = {
       name: formData.name.trim(),
       type: formData.type || (formData.category === 'minuman' ? 'Rifle' : 'Pistol'),
@@ -273,7 +309,8 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       price: Number(formData.price) || 500,
       category: formData.category || 'makanan',
       description: formData.description.trim() || `${formData.type} caliber ${formData.caliber}.`,
-      image_url: imagePreview || currentImageUrl || '/guns/pistol.svg',
+      image_url: currentImageUrls[0] || '/guns/pistol.svg',
+      images: currentImageUrls,
       prep_time: 15,
       cook_time: Number(formData.price) || 500,
       servings: Number(formData.servings) || 1,
@@ -351,41 +388,65 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
         {/* Imagery Section */}
         <div className="card-box">
           <h2 className="card-box-title">Visual Asset</h2>
-          <div className="edit-img-wrap">
-            <img
-              src={imagePreview || currentImageUrl}
-              alt="Current hardware"
-              className="edit-current-img"
-            />
-            <div className="edit-img-controls">
-              <input
-                id="edit-gun-image"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleImageChange}
-                className="hidden-file-input"
-              />
-              <label htmlFor="edit-gun-image" className="btn btn--outline btn--sm">
-                <Upload size={14} /> Select New Image File
-              </label>
-
-              {imageFile && (
+          <div className="image-gallery image-gallery--edit">
+            {currentImageUrls.map((url, index) => (
+              <div className="image-gallery-item" key={`${url}-${index}`}>
+                <img src={url} alt={`Hardware image ${index + 1}`} className="edit-current-img" />
                 <button
                   type="button"
-                  className="btn btn--primary btn--sm"
-                  onClick={handleUploadNewImage}
-                  disabled={uploading}
+                  className="preview-remove-btn"
+                  onClick={() => handleRemoveCurrentImage(index)}
+                  title="Remove image"
+                  aria-label={`Remove hardware image ${index + 1}`}
                 >
-                  {uploading ? (
-                    <>
-                      <Loader size={14} className="spin" /> Uploading…
-                    </>
-                  ) : (
-                    'Upload to MinIO'
-                  )}
+                  <X size={16} />
                 </button>
-              )}
-            </div>
+              </div>
+            ))}
+            {imagePreviews.map((preview, index) => (
+              <div className="image-gallery-item" key={`${preview}-${index}`}>
+                <img src={preview} alt={`New hardware image ${index + 1}`} className="edit-current-img" />
+                <button
+                  type="button"
+                  className="preview-remove-btn"
+                  onClick={() => handleRemoveSelectedImage(index)}
+                  title="Remove image"
+                  aria-label={`Remove selected image ${index + 1}`}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="edit-img-controls">
+            <input
+              id="edit-gun-image"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              multiple
+              onChange={handleImageChange}
+              className="hidden-file-input"
+            />
+            <label htmlFor="edit-gun-image" className="btn btn--outline btn--sm">
+              <Upload size={14} /> Select Images
+            </label>
+
+            {imageFiles.length > 0 && (
+              <button
+                type="button"
+                className="btn btn--primary btn--sm"
+                onClick={handleUploadNewImages}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader size={14} className="spin" /> Uploading…
+                  </>
+                ) : (
+                  `Upload ${imageFiles.length} image${imageFiles.length === 1 ? '' : 's'}`
+                )}
+              </button>
+            )}
           </div>
         </div>
 

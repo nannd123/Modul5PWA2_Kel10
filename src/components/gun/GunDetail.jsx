@@ -17,7 +17,10 @@ import reviewVoteService from '../../services/reviewVoteService'
  * @param {Function} [props.onDelete]— trigger delete flow
  */
 export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
-  const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
+  const imageUrls = Array.isArray(gun.images) && gun.images.length
+    ? gun.images
+    : [gun.image_url || gun.image || '/guns/pistol.svg']
+  const imgSrc = imageUrls[0]
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
@@ -33,7 +36,10 @@ export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
   const [editingReview, setEditingReview] = useState(null)
   const [voteRevision, setVoteRevision] = useState(0)
   const [shareMessage, setShareMessage] = useState('')
+  const [selectedImage, setSelectedImage] = useState(imgSrc)
   const { updateReview, deleteReview, loading: changingReview } = useReviewMutations()
+
+  const activeImage = imageUrls.includes(selectedImage) ? selectedImage : imgSrc
 
   const avgRating = gun.average_rating || averageRating(reviews)
   const reviewCount = gun.review_count ?? reviews.length
@@ -105,7 +111,25 @@ export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
 
       {/* Hero */}
       <div className="detail-hero">
-        <img className="detail-img" src={imgSrc} alt={gun.name} />
+        <div className="detail-media">
+          <img className="detail-img" src={activeImage} alt={gun.name} />
+          {imageUrls.length > 1 && (
+            <div className="detail-thumbnails" aria-label="Product images">
+              {imageUrls.map((url, index) => (
+                <button
+                  type="button"
+                  className={`detail-thumbnail ${activeImage === url ? 'active' : ''}`}
+                  key={`${url}-${index}`}
+                  onClick={() => setSelectedImage(url)}
+                  aria-label={`Show product image ${index + 1}`}
+                  aria-pressed={activeImage === url}
+                >
+                  <img src={url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="detail-info">
           <h1 className="display">{gun.name}</h1>
           <p className="type">

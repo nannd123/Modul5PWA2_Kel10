@@ -1,5 +1,5 @@
 import { apiClient, IS_SUPABASE } from '../config/api'
-import { invalidateQuery } from '../utils/queryCache'
+import { getCachedQuery, invalidateQuery } from '../utils/queryCache'
 
 // ---------------------------------------------------------------------------
 // Normalizer — standardizes product shape whether received from Supabase
@@ -7,6 +7,11 @@ import { invalidateQuery } from '../utils/queryCache'
 // ---------------------------------------------------------------------------
 export const normalizeProduct = (item) => {
   if (!item) return null
+
+  const imageUrls = [
+    item.image_url || item.image,
+    ...(Array.isArray(item.images) ? item.images : []),
+  ].filter((url, index, urls) => typeof url === 'string' && url && urls.indexOf(url) === index)
 
   // Resolve specifications from Supabase `specs` (text array) or API `ingredients`
   let specsList = []
@@ -48,8 +53,9 @@ export const normalizeProduct = (item) => {
     caliber: item.caliber || 'Standard',
     price: Number(item.price ?? item.cook_time ?? 0),
     description: item.description || '',
-    image_url: item.image_url || item.image || '/guns/pistol.svg',
-    image: item.image_url || item.image || '/guns/pistol.svg',
+    image_url: imageUrls[0] || '/guns/pistol.svg',
+    image: imageUrls[0] || '/guns/pistol.svg',
+    images: imageUrls.length ? imageUrls : ['/guns/pistol.svg'],
     ingredients: specsList,
     steps: stepsList,
   }
@@ -112,7 +118,15 @@ class GunService {
   /**
    * Fetch a single product by ID.
    */
-  async getGunById(id) {
+  async getGunById(id, { force = false } = {}) {
+    return getCachedQuery(
+      `gun:${id}`,
+      () => this.fetchGunById(id),
+      { force },
+    )
+  }
+
+  async fetchGunById(id) {
     if (IS_SUPABASE) {
       const data = await apiClient.get(`/rest/v1/products?id=eq.${id}&select=*`)
       if (Array.isArray(data) && data.length > 0) {
@@ -143,6 +157,7 @@ class GunService {
         description: data.description || '',
         specs: specsArray,
         image_url: data.image_url || null,
+        images: Array.isArray(data.images) ? data.images : (data.image_url ? [data.image_url] : []),
       }
 
       const res = await apiClient.post('/rest/v1/products', payload, {
@@ -181,6 +196,7 @@ class GunService {
       if (data.description !== undefined) payload.description = data.description
       if (specsArray !== undefined) payload.specs = specsArray
       if (data.image_url !== undefined) payload.image_url = data.image_url
+      if (data.images !== undefined) payload.images = data.images
 
       const res = await apiClient.patch(`/rest/v1/products?id=eq.${id}`, payload, {
         headers: { Prefer: 'return=representation' },

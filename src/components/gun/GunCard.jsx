@@ -12,7 +12,7 @@ import { Archive } from 'lucide-react'
  * @param {Function} [props.onArchive] — called when Archive is clicked
  */
 export default function GunCard({ gun, onSelect, onEdit, onArchive }) {
-  const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
+  const imgSrc = gun.images?.[0] || gun.image_url || gun.image || '/guns/pistol.svg'
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0

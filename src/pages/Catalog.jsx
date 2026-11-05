@@ -46,6 +46,7 @@ export default function Catalog({ onNavigate }) {
   const [sortKey, setSortKey] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
   const [archives, setArchives] = useState(archiveService.getArchives)
+  const [permanentlyDeletedIds, setPermanentlyDeletedIds] = useState(archiveService.getPermanentlyDeletedIds)
 
   const categories = useMemo(() => extractCategories(rawGuns), [rawGuns])
 
@@ -56,8 +57,11 @@ export default function Catalog({ onNavigate }) {
     return sortItems(result, sortKey, sortOrder)
   }, [rawGuns, search, activeCategory, sortKey, sortOrder])
   const visibleGuns = useMemo(
-    () => filteredGuns.filter((gun) => !archives.some((item) => String(item.id) === String(gun.id))),
-    [filteredGuns, archives],
+    () => filteredGuns.filter((gun) =>
+      !archives.some((item) => String(item.id) === String(gun.id)) &&
+      !permanentlyDeletedIds.some((id) => String(id) === String(gun.id)),
+    ),
+    [filteredGuns, archives, permanentlyDeletedIds],
   )
 
   // ---- detail view ----
@@ -68,7 +72,10 @@ export default function Catalog({ onNavigate }) {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  useEffect(() => archiveService.subscribe(() => setArchives(archiveService.getArchives())), [])
+  useEffect(() => archiveService.subscribe(() => {
+    setArchives(archiveService.getArchives())
+    setPermanentlyDeletedIds(archiveService.getPermanentlyDeletedIds())
+  }), [])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
