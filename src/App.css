@@ -435,6 +435,51 @@
   margin-bottom: 12px;
 }
 
+.card-gallery-controls {
+  position: absolute;
+  top: 74px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.card-gallery-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.card-gallery-btn:hover {
+  background: #fff;
+  border-color: var(--brass);
+}
+
+.card-gallery-count {
+  position: absolute;
+  bottom: -62px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  color: #fff;
+  background: rgba(24, 34, 44, 0.72);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
 .card .name,
 .card .type,
 .card .price,
@@ -636,12 +681,61 @@
   min-height: 280px;
   max-height: 420px;
   object-fit: cover;
+  touch-action: pan-y;
   background: #f7f9fa;
   border-right: 1px solid var(--line);
 }
 
 .detail-media {
+  position: relative;
   min-width: 0;
+}
+
+.detail-gallery-controls {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  bottom: 74px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.detail-gallery-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.detail-gallery-btn:hover {
+  background: #fff;
+  border-color: var(--brass);
+}
+
+.detail-gallery-count {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 9px;
+  color: #fff;
+  background: rgba(24, 34, 44, 0.72);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  pointer-events: none;
 }
 
 .detail-thumbnails {

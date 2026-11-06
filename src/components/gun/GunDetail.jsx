@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowLeft, Star, Send, Loader, Share2, ThumbsDown, ThumbsUp, Trash2, Pencil } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Star, Send, Loader, Share2, ThumbsDown, ThumbsUp, Trash2, Pencil } from 'lucide-react'
 import FavoriteButton from '../common/FavoriteButton'
 import { useReviews, useCreateReview, useReviewMutations } from '../../hooks/useReviews'
 import { API_CONFIGURED } from '../../config/api'
@@ -20,7 +20,6 @@ export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
   const imageUrls = Array.isArray(gun.images) && gun.images.length
     ? gun.images
     : [gun.image_url || gun.image || '/guns/pistol.svg']
-  const imgSrc = imageUrls[0]
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
@@ -36,10 +35,37 @@ export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
   const [editingReview, setEditingReview] = useState(null)
   const [voteRevision, setVoteRevision] = useState(0)
   const [shareMessage, setShareMessage] = useState('')
-  const [selectedImage, setSelectedImage] = useState(imgSrc)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const imageTouchStart = useRef(null)
   const { updateReview, deleteReview, loading: changingReview } = useReviewMutations()
 
-  const activeImage = imageUrls.includes(selectedImage) ? selectedImage : imgSrc
+  const activeImageIndex = Math.min(selectedImageIndex, imageUrls.length - 1)
+  const activeImage = imageUrls[activeImageIndex]
+
+  const handleImageTouchStart = (event) => {
+    if (event.touches.length !== 1 || imageUrls.length < 2) {
+      imageTouchStart.current = null
+      return
+    }
+
+    const touch = event.touches[0]
+    imageTouchStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  const handleImageTouchEnd = (event) => {
+    const start = imageTouchStart.current
+    imageTouchStart.current = null
+    if (!start || imageUrls.length < 2) return
+
+    const touch = event.changedTouches[0]
+    if (!touch) return
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    if (Math.abs(deltaX) < 50 || Math.abs(deltaX) <= Math.abs(deltaY)) return
+
+    const direction = deltaX < 0 ? 1 : -1
+    setSelectedImageIndex((activeImageIndex + direction + imageUrls.length) % imageUrls.length)
+  }
 
   const avgRating = gun.average_rating || averageRating(reviews)
   const reviewCount = gun.review_count ?? reviews.length
@@ -112,22 +138,51 @@ export default function GunDetail({ gun, onBack, onEdit, onArchive }) {
       {/* Hero */}
       <div className="detail-hero">
         <div className="detail-media">
-          <img className="detail-img" src={activeImage} alt={gun.name} />
+          <img
+            className="detail-img"
+            src={activeImage}
+            alt={`${gun.name}, image ${activeImageIndex + 1} of ${imageUrls.length}`}
+            onTouchStart={handleImageTouchStart}
+            onTouchEnd={handleImageTouchEnd}
+          />
           {imageUrls.length > 1 && (
-            <div className="detail-thumbnails" aria-label="Product images">
-              {imageUrls.map((url, index) => (
+            <>
+              <div className="detail-gallery-controls" aria-label={`${gun.name} images`}>
                 <button
                   type="button"
-                  className={`detail-thumbnail ${activeImage === url ? 'active' : ''}`}
-                  key={`${url}-${index}`}
-                  onClick={() => setSelectedImage(url)}
-                  aria-label={`Show product image ${index + 1}`}
-                  aria-pressed={activeImage === url}
+                  className="detail-gallery-btn"
+                  onClick={() => setSelectedImageIndex((activeImageIndex - 1 + imageUrls.length) % imageUrls.length)}
+                  aria-label={`Show previous image of ${gun.name}`}
                 >
-                  <img src={url} alt="" loading="lazy" />
+                  <ChevronLeft size={22} />
                 </button>
-              ))}
-            </div>
+                <span className="detail-gallery-count" aria-live="polite">
+                  {activeImageIndex + 1} / {imageUrls.length}
+                </span>
+                <button
+                  type="button"
+                  className="detail-gallery-btn"
+                  onClick={() => setSelectedImageIndex((activeImageIndex + 1) % imageUrls.length)}
+                  aria-label={`Show next image of ${gun.name}`}
+                >
+                  <ChevronRight size={22} />
+                </button>
+              </div>
+              <div className="detail-thumbnails" aria-label="Product images">
+                {imageUrls.map((url, index) => (
+                  <button
+                    type="button"
+                    className={`detail-thumbnail ${activeImageIndex === index ? 'active' : ''}`}
+                    key={`${url}-${index}`}
+                    onClick={() => setSelectedImageIndex(index)}
+                    aria-label={`Show product image ${index + 1}`}
+                    aria-pressed={activeImageIndex === index}
+                  >
+                    <img src={url} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
         <div className="detail-info">

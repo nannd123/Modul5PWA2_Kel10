@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import FavoriteButton from '../common/FavoriteButton'
 import { formatPrice, truncate } from '../../utils/helpers'
-import { Archive } from 'lucide-react'
+import { Archive, ChevronLeft, ChevronRight } from 'lucide-react'
 
 /**
  * Product card used in the catalog grid.
@@ -12,7 +13,13 @@ import { Archive } from 'lucide-react'
  * @param {Function} [props.onArchive] — called when Archive is clicked
  */
 export default function GunCard({ gun, onSelect, onEdit, onArchive }) {
-  const imgSrc = gun.images?.[0] || gun.image_url || gun.image || '/guns/pistol.svg'
+  const imageUrls = [
+    ...(Array.isArray(gun.images) ? gun.images : []),
+    gun.image_url || gun.image,
+  ].filter((url, index, urls) => typeof url === 'string' && url && urls.indexOf(url) === index)
+  const images = imageUrls.length ? imageUrls : ['/guns/pistol.svg']
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const activeImageIndex = Math.min(selectedImageIndex, images.length - 1)
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
@@ -27,8 +34,8 @@ export default function GunCard({ gun, onSelect, onEdit, onArchive }) {
       >
         <img
           className="card-img"
-          src={imgSrc}
-          alt={gun.name}
+          src={images[activeImageIndex]}
+          alt={`${gun.name}, image ${activeImageIndex + 1} of ${images.length}`}
           width="240"
           height="180"
           loading="lazy"
@@ -47,6 +54,30 @@ export default function GunCard({ gun, onSelect, onEdit, onArchive }) {
 
         <span className="price">{formatPrice(price)}</span>
       </button>
+
+      {images.length > 1 && (
+        <div className="card-gallery-controls" aria-label={`${gun.name} images`}>
+          <button
+            type="button"
+            className="card-gallery-btn"
+            onClick={() => setSelectedImageIndex((activeImageIndex - 1 + images.length) % images.length)}
+            aria-label={`Show previous image of ${gun.name}`}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="card-gallery-count" aria-live="polite">
+            {activeImageIndex + 1} / {images.length}
+          </span>
+          <button
+            type="button"
+            className="card-gallery-btn"
+            onClick={() => setSelectedImageIndex((activeImageIndex + 1) % images.length)}
+            aria-label={`Show next image of ${gun.name}`}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Floating actions row */}
       <div className="card-actions">
